@@ -17,8 +17,13 @@ def ask(request: PromptRequest):
 async def browse(parsed: dict):
     try:
         # 1. Launch Browser
-        await launch_browser(parsed,headless=True)
-        return {"status": "success", "query": f"{parsed['business_type']} in {parsed['location']}"}
+        businesses = await launch_browser(parsed)
+        
+        return {
+            "status": "success",
+            "total": len(businesses),
+            "businesses": businesses
+        }
         
     except Exception as e:
         return {"status": "error", "message": str(e)}

@@ -1,12 +1,15 @@
-from playwright.async_api import async_playwright, Browser, Page
+import asyncio
+
+from playwright.async_api import async_playwright, Page
 from app.services.selectors import GOOGLE_MAPS_SEARCH_BOX, RESULTS_PANEL
+from app.services.scraper import scrape_businesses
+
 async def search_google_maps(page: Page, parsed: dict):
     """
     Navigate to Google Maps and perform a search using the extracted business type and location.
     """
     if not page:
         raise Exception("Browser has not been launched. Call launch_browser() first.")
-
 
     query = f"{parsed['business_type']} in {parsed['location']}"
         
@@ -16,8 +19,8 @@ async def search_google_maps(page: Page, parsed: dict):
         wait_until="domcontentloaded",
         timeout=60000
     )
-    # Take screenshot
-    await page.screenshot(path="screenshots/01_maps_loaded.png")
+    # Take screenshot for debugging
+    # await page.screenshot(path="screenshots/01_maps_loaded.png")
     # Type search query into Google Maps input
     search_box = page.locator(GOOGLE_MAPS_SEARCH_BOX)
 
@@ -25,28 +28,28 @@ async def search_google_maps(page: Page, parsed: dict):
     await search_box.fill(query)
     await search_box.fill(query)
 
-    await page.screenshot(path="screenshots/02_query_typed.png")
+    # Take screenshot for debugging
+    # await page.screenshot(path="screenshots/02_query_typed.png")
     await search_box.press("Enter")
 
     # # Wait for results panel to render
     await page.wait_for_load_state("domcontentloaded")
     await page.wait_for_selector(RESULTS_PANEL, timeout=30000)
-    await page.screenshot(path="screenshots/03_results_loaded.png")
+    # Take screenshot for debugging
+    # await page.screenshot(path="screenshots/03_results_loaded.png")
         
-    print(f"Successfully performed search for: {query}")
+    # print(f"Successfully performed search for: {query}")
 
-async def close_browser(page: Page, context, browser: Browser, playwright):
-    """
-    Gracefully close the page, context, browser, and stop Playwright.
-    """
-    if page:
-        await page.close()
-    if context:
-        await context.close()
-    if browser:
-        await browser.close()
-    if playwright:
-        await playwright.stop()
+    # return scrapped businesses
+    businesses = await scrape_businesses(page)
+    return businesses
+
+async def close_browser(browser):
+    try:
+        if browser and browser.is_connected():
+            await asyncio.wait_for(browser.close(), timeout=1000)
+    except Exception as e:
+        print(f"Browser close failed: {e}")
 
 async def launch_browser(parsed: dict,headless: bool = False):
     """
@@ -69,7 +72,9 @@ async def launch_browser(parsed: dict,headless: bool = False):
         page = await context.new_page()
 
         try:
-            await search_google_maps(page, parsed)
+            businesses = await search_google_maps(page, parsed)
+            return businesses
         finally:
-            await close_browser(page, context,browser, playwright)
+            await close_browser(browser)
+            # async with exit stops playwright exactly once, here
 
