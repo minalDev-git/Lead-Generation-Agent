@@ -1,5 +1,7 @@
 import re
-async def scrape_email(page, url):
+from playwright.async_api import Page
+
+async def scrape_email(page:Page, url):
     """
         Navigate to website url and perform a search for email.
     """
@@ -11,16 +13,22 @@ async def scrape_email(page, url):
 
     # 1. Validate URL to prevent empty or invalid string navigation errors
     if not url or not isinstance(url, str) or not url.strip() or url.startswith("about:"):
-        print(f"Skipping: Invalid or empty URL provided ({url})")
+        # print(f"Skipping: Invalid or empty URL provided ({url})")
         return None
 
     url = url.strip()
 
     try:
-        print(f"Navigating to {url}...")
+        # print(f"Navigating to {url}...")
         # Go to Google Maps
         await page.goto(url, wait_until="domcontentloaded", timeout=20000)
-        await page.wait_for_load_state("networkidle", timeout=5000)
+
+        # Safe networkidle wait (won't crash if it times out)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=5000)
+        except Exception:
+            pass
+
         # Take screenshot for debugging
         await page.screenshot(path="screenshots/website_loaded.png")
 
@@ -41,23 +49,12 @@ async def scrape_email(page, url):
             
         # Find all unique emails matching the regex
         emails = set(regex.findall(html_content))
-        print(f"Found {len(emails)} emails.")
+        # print(f"Found {len(emails)} emails.")
 
         # 2. Safely return an email if found, otherwise return None
         if emails:
             return emails.pop()
-
-        # Find all links that start with mailto:
-        
-        # mailto_handles = await page.locator("a[href^='mailto:']").all()
-        # for handle in mailto_handles:
-        #     href = await handle.get_attribute("href")
-        #     # Clean the href (e.g., 'mailto:info@business.com' -> 'info@business.com')
-        #     email = href.replace("mailto:", "").split("?")[0].strip() # type: ignore
-        
-    except:
-        import traceback
-        traceback.print_exc()
-        raise
-        # return email
-    return ""
+        else:
+            return ""
+    except Exception as e:
+        print(f"Failed to scrape email from {url}: {e}")

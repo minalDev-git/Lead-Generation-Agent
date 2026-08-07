@@ -1,17 +1,18 @@
 import asyncio
 
 from playwright.async_api import async_playwright, Page
-from app.services.selectors import GOOGLE_MAPS_SEARCH_BOX, RESULTS_PANEL
-from app.services.scraper import scrape_businesses
+from services.selectors import GOOGLE_MAPS_SEARCH_BOX, RESULTS_PANEL
+from config import HEADLESS
+from services.scraper import scrape_businesses
 
-async def search_google_maps(page: Page, parsed: dict):
+async def search_google_maps(page: Page, business_type: str, location: str):
     """
     Navigate to Google Maps and perform a search using the extracted business type and location.
     """
     if not page:
         raise Exception("Browser has not been launched. Call launch_browser() first.")
 
-    query = f"{parsed['business_type']} in {parsed['location']}"
+    query = f"{business_type} in {location}"
         
     # Go to Google Maps
     await page.goto(
@@ -51,7 +52,7 @@ async def close_browser(browser):
     except Exception as e:
         print(f"Browser close failed: {e}")
 
-async def launch_browser(parsed: dict,headless: bool = False):
+async def scrape_leads(business_type: str, location: str,headless: bool = HEADLESS) -> list[dict]:
     """
     Start Playwright, Launch Chromium, Create Context, and Open New Page.
     """
@@ -72,7 +73,7 @@ async def launch_browser(parsed: dict,headless: bool = False):
         page = await context.new_page()
 
         try:
-            businesses = await search_google_maps(page, parsed)
+            businesses = await search_google_maps(page, business_type,location)
             return businesses
         finally:
             await close_browser(browser)

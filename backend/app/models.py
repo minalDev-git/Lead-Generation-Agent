@@ -1,10 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 
-class PromptRequest(BaseModel):
-    prompt: str
-
-
 # ---- 1. Define the expected structured output ----
 class LeadQuery(BaseModel):
     business_type: Optional[str] = Field(

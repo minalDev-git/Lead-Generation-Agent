@@ -1,5 +1,5 @@
-from app.config import GROQ_API_KEY,GROQ_MODEL
-from app.models import LeadQuery
+from config import GROQ_API_KEY,GROQ_LIGHT_MODEL
+from models import LeadQuery
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -28,10 +28,11 @@ Rules:
 "location": null
 
 - If both are missing, return:
-{
+
+{{
   "business_type": null,
   "location": null
-}
+}}
 
 - Do not infer information that is not present or reasonably implied in the text.
 - Do not add explanations, commentary, or extra fields — return only the requested structure.
@@ -39,7 +40,7 @@ Rules:
 """
 
 
-def prompt_parser(user_prompt: str)-> dict:
+def prompt_parser(user_prompt: str)-> LeadQuery:
     """Builds and returns the LangChain runnable chain for parsing prompts."""
     """
     Extracts business_type and location from a natural-language lead-gen prompt.
@@ -52,7 +53,7 @@ def prompt_parser(user_prompt: str)-> dict:
     """
     
     llm = ChatGroq(
-        model=GROQ_MODEL,  # any Groq-hosted model works # type: ignore
+        model=GROQ_LIGHT_MODEL,  # type: ignore
         temperature=0,
         api_key=GROQ_API_KEY, # type: ignore
     )
@@ -67,10 +68,5 @@ def prompt_parser(user_prompt: str)-> dict:
     chain = prompt | structured_llm
     result = chain.invoke({"user_prompt": user_prompt})
 
-    # result is a LeadQuery instance (or dict, depending on LangChain version)
-    if isinstance(result, dict):
-        return result
-    else:
-        return result.model_dump()
-    
-    
+    # result is a LeadQuery instance
+    return result # type: ignore

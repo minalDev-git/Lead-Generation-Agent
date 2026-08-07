@@ -1,7 +1,17 @@
-from playwright.async_api import Page
-from app.services.selectors import CARD_SELECTOR,BUSINESS_NAME,WEBSITE_SELECTOR,PHONE_SELECTOR,ADDRESS_SELECTOR,RESULTS_PANEL
-# from app.services.email_scraper import scrape_email
+import json
 import asyncio
+from playwright.async_api import Page
+from services.selectors import CARD_SELECTOR,BUSINESS_NAME,WEBSITE_SELECTOR,PHONE_SELECTOR,ADDRESS_SELECTOR,RESULTS_PANEL
+from services.email_scraper import scrape_email
+from urllib.parse import urlparse
+
+SKIP_DOMAINS = {
+    "facebook.com",
+    "www.facebook.com",
+    "instagram.com",
+    "www.instagram.com",
+    "linktr.ee",
+}
 
 async def wait_for_panel_update(page: Page, previous_name: str, timeout_ms: int = 8000) -> str:
     """
@@ -34,13 +44,14 @@ async def wait_for_panel_update(page: Page, previous_name: str, timeout_ms: int 
 
 
 async def scrape_businesses(page: Page):
-    global_businesses = []
+    businesses = []
     processed_count = 0
     max_scroll_attempts = 10
     no_new_cards_count = 0
     previous_name = ""  # tracks last-confirmed panel name
+    MAX_RESULTS = 50
 
-    while no_new_cards_count < max_scroll_attempts:
+    while no_new_cards_count < max_scroll_attempts and processed_count < MAX_RESULTS:
         current_card_count = await page.locator(CARD_SELECTOR).count()
 
         if processed_count >= current_card_count:
@@ -65,38 +76,57 @@ async def scrape_businesses(page: Page):
             business_name = await wait_for_panel_update(page, previous_name)
 
             if not business_name or business_name == previous_name:
-                print(f"Panel did not update for card {processed_count}, skipping.")
+                # print(f"Panel did not update for card {processed_count + 1}, skipping.")
                 processed_count += 1
                 continue
+
+            phone_element = page.locator(PHONE_SELECTOR)
+            phone = await phone_element.first.inner_text() if await phone_element.count() > 0 else ""
+            
+            address_element = page.locator(ADDRESS_SELECTOR)
+            address = await address_element.first.inner_text() if await address_element.count() > 0 else ""
 
             website_element = page.locator(WEBSITE_SELECTOR)
             website = await website_element.first.get_attribute("href") if await website_element.count() > 0 else ""
 
-            phone_element = page.locator(PHONE_SELECTOR)
-            phone = await phone_element.first.inner_text() if await phone_element.count() > 0 else ""
-
-            address_element = page.locator(ADDRESS_SELECTOR)
-            address = await address_element.first.inner_text() if await address_element.count() > 0 else ""
+            domain = urlparse(website).netloc.lower()
+            if domain in SKIP_DOMAINS:
+                email=""
+            else:
+                # 3. Extract Email (if available)       
+                website_page = await page.context.new_page()
+                email = await scrape_email(website_page, website)
+                await website_page.close()
+                            
+                if(not email):
+                    email = ""
 
             business_data = {
                 "name": business_name,
                 "website": website,
                 "phone": phone,
-                "address": address
+                "address": address,
+                "email": email
             }
 
-            global_businesses.append(business_data)
-            print(f"[{processed_count + 1}] Successfully scraped: {business_name}")
+            businesses.append(business_data)
+            # print(f"[{processed_count + 1}] Successfully scraped: {business_name}")
 
             previous_name = business_name  # update tracker only on confirmed change
             processed_count += 1
 
         except Exception as e:
-            print(f"Error processing card at index {processed_count}: {e}")
+            # print(f"Error processing card at index {processed_count}: {e}")
             processed_count += 1
             continue
 
-    return global_businesses
+    max_items = 3
+    truncated_list = businesses[:max_items]
+
+    # 2. Pretty-print it to the terminal
+    print(f"--- Tool Output Preview ({len(truncated_list)} of {MAX_RESULTS} items) ---")
+    print(json.dumps(truncated_list, indent=2))
+    return businesses
 
 # THIS FUNCTION WAS IMPLEMENTED BEFORE ADDING BATCHED LOGIC TO LOAD ALL THE CARDS
 

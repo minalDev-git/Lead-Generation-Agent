@@ -1,11 +1,7 @@
-fastapi
-pandas
 openpyxl
 playwright
-uvicorn
-fastapi[standard]
 python-dotenv
 langchain
 langchain-groq
-langchain-community
 langchain-core
+https://poloclub.github.io/transformer-explainer/
