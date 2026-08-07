@@ -4,4 +4,4 @@ python-dotenv
 langchain
 langchain-groq
 langchain-core
-https://poloclub.github.io/transformer-explainer/
+rich

@@ -56,5 +56,6 @@ async def scrape_email(page:Page, url):
             return emails.pop()
         else:
             return ""
-    except Exception as e:
-        print(f"Failed to scrape email from {url}: {e}")
+    except Exception:
+        # print(f"Failed to scrape email from {url}: {e}")
+        pass

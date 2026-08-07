@@ -1,5 +1,6 @@
 import json
 import inspect
+from config import CONSOLE
 from agent.memory import init_history,add_user,add_assistant
 from agent.prompt import build_system_prompt
 from agent.llm import chat
@@ -14,6 +15,13 @@ def format_observation(observation) -> str:
         return json.dumps(observation, indent=2)
 
     return str(observation)
+
+def truncate_text(text: str, max_chars: int = 1000) -> str:
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rstrip() + "... [truncated]"
+
+console = CONSOLE
 
 async def run():
     system_p = build_system_prompt()
@@ -54,14 +62,17 @@ async def run():
                     observation = f"[error] Unknown tool: {tool_name}"
                 else:
                     try:
-                        if inspect.iscoroutinefunction(handler):
-                            observation = await handler(**tool_args)
-                        else:
-                            observation = handler(**tool_args)
+                        with console.status(f"[bold green]Executing tool:[/] [yellow]{tool_name}[/]", spinner="dots") as status:
+                            status.update(f"[bold cyan]Running {tool_name}[/]")
+                            if inspect.iscoroutinefunction(handler):
+                                observation = await handler(**tool_args)
+                            else:
+                                observation = handler(**tool_args)
                     except Exception as e:
                             observation = f"[error] {type(e).__name__}: {e}"
                 # Pretty-print for the user
-                print(f"⏳ Processing 🔧 {tool_name}...")
+                console.print(f"⏳ [bold yellow]Processing[/] 🔧 [bold]{tool_name}[/]")
+                console.print(f"🔧 [cyan]{tool_name}[/] [dim]{truncate_text(str(tool_args))}[/]")
 
                 observation_text = format_observation(observation)
             

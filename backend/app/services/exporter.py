@@ -63,6 +63,5 @@ def save_to_excel(businesses: List[dict], business_type: str, location:str) -> d
         }
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        print(f"Failed to create the excel file: {e}")
         return {}

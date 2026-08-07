@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+from rich.console import Console
 
 load_dotenv()
 
@@ -15,3 +16,5 @@ GROQ_LIGHT_MODEL = os.getenv("GROQ_LIGHT_MODEL")
 HEADLESS = os.getenv("HEADLESS") == "True"
 
 OUTPUT_DIR = os.getenv("OUTPUT_DIR")
+
+CONSOLE = Console()
